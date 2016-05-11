@@ -86,7 +86,7 @@ class BacktestingEngine(object):
         self.mode = mode
         
     #----------------------------------------------------------------------
-    def loadHistoryData(self, dbName, symbol):
+    def loadHistoryData(self, dbName, symbol, host=None):
         """载入历史数据"""
         self.output(u'开始载入数据')
         
@@ -97,15 +97,24 @@ class BacktestingEngine(object):
             dataClass = CtaTickData
         
         # 从数据库进行查询
-        self.dbClient = pymongo.MongoClient()
+        self.dbClient = pymongo.MongoClient(host=host)
         collection = self.dbClient[dbName][symbol]
         
-        flt = {'datetime':{'$gte':self.dataStartDate}}   # 数据过滤条件
-        self.dbCursor = collection.find(flt)
-        
+        #flt = {'date':{'$gte':self.dataStartDate}}   # 数据过滤条件
+        # self.dbCursor = collection.find(flt)
+        self.dbCursor = collection.find()
+
         # 将数据从查询指针中读取出，并生成列表
+        i = 0
         for d in self.dbCursor:
+            i += 1
+            print i
             data = dataClass()
+            d['datetime'] = d['date']
+            d['low'] = d['lowestPrice']
+            d['high'] = d['highestPrice']
+            d['close'] = d['closePrice']
+            d['open'] = d['openPrice']
             data.__dict__ = d
             if data.datetime < self.strategyStartDate:
                 self.initData.append(data)
@@ -534,8 +543,8 @@ if __name__ == '__main__':
     engine.setStartDate('20110101')
     
     # 载入历史数据到引擎中
-    engine.loadHistoryData(MINUTE_DB_NAME, 'IF0000')
-    
+    engine.loadHistoryData('DATAYES_EQUITY_M1', u'000001.XSHE', host='quant.darwin-sys.com')
+
     # 设置产品相关参数
     engine.setSlippage(0.2)     # 股指1跳
     engine.setRate(0.3/10000)   # 万0.3
